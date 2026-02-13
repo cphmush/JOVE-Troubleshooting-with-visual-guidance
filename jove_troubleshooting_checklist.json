@@ -1,0 +1,273 @@
+{
+  "project": "JOVE",
+  "version": "mvp-0.2",
+  "source_files": ["Jove-schematic.pdf"],
+  "rules": {
+    "one_step_per_turn": true,
+    "default_tool": "multimeter_dc",
+    "scope_optional": true,
+    "safety_powered": "Be careful not to short adjacent pins."
+  },
+  "symptoms": [
+    {
+      "id": "dead_module",
+      "name": "Dead module (no LEDs, no output, nothing)",
+      "entry_questions": [
+        "Is the module powered from Eurorack (not just sitting on a desk)?",
+        "Do you have a multimeter?"
+      ],
+      "steps": [
+        {
+          "id": "pwr_01_plus12_at_header",
+          "check": "Measure +12V at power header",
+          "where": "P1 (+12V pin) to GND",
+          "expect": { "min": 11.5, "typ": 12.0, "max": 12.5, "units": "V" },
+          "safety": true,
+          "pass_next": "pwr_02_minus12_at_header",
+          "fail_next": "dead_fail_power_cable_or_header"
+        },
+        {
+          "id": "pwr_02_minus12_at_header",
+          "check": "Measure -12V at power header",
+          "where": "P1 (-12V pin) to GND",
+          "expect": { "min": -12.5, "typ": -12.0, "max": -11.5, "units": "V" },
+          "safety": true,
+          "pass_next": "pwr_03_plus12_on_board",
+          "fail_next": "dead_fail_power_cable_or_header"
+        },
+        {
+          "id": "pwr_03_plus12_on_board",
+          "check": "Confirm +12V rail exists on-board",
+          "where": "+12V rail at a decoupling cap (e.g., C16/C17/C19/C20 etc.) to GND",
+          "expect": { "min": 11.5, "typ": 12.0, "max": 12.5, "units": "V" },
+          "safety": true,
+          "pass_next": "pwr_04_minus12_on_board",
+          "fail_next": "dead_fail_open_series_or_trace_plus12"
+        },
+        {
+          "id": "pwr_04_minus12_on_board",
+          "check": "Confirm -12V rail exists on-board",
+          "where": "-12V rail at a decoupling cap (e.g., C14/C15 etc.) to GND",
+          "expect": { "min": -12.5, "typ": -12.0, "max": -11.5, "units": "V" },
+          "safety": true,
+          "pass_next": "pwr_05_ic_supply_tl072",
+          "fail_next": "dead_fail_open_series_or_trace_minus12"
+        },
+        {
+          "id": "pwr_05_ic_supply_tl072",
+          "check": "Rails reach at least one TL072",
+          "where": "U1A TL072: pin 8 (V+) to GND, and pin 4 (V-) to GND",
+          "expect": {
+            "vplus": { "min": 11.5, "typ": 12.0, "max": 12.5, "units": "V" },
+            "vminus": { "min": -12.5, "typ": -12.0, "max": -11.5, "units": "V" }
+          },
+          "safety": true,
+          "pass_next": "pwr_06_ic_supply_lm13700",
+          "fail_next": "dead_fail_ic_power_not_reaching_opamp"
+        },
+        {
+          "id": "pwr_06_ic_supply_lm13700",
+          "check": "Rails reach the OTA core (LM13700)",
+          "where": "U5A/U5B LM13700: V+ pin 11 to GND and V- pin 6 to GND",
+          "expect": {
+            "vplus": { "min": 11.5, "typ": 12.0, "max": 12.5, "units": "V" },
+            "vminus": { "min": -12.5, "typ": -12.0, "max": -11.5, "units": "V" }
+          },
+          "safety": true,
+          "pass_next": "dead_done_power_ok_go_signal",
+          "fail_next": "dead_fail_ic_power_not_reaching_ota"
+        }
+      ],
+      "end_states": [
+        {
+          "id": "dead_done_power_ok_go_signal",
+          "summary": "Power rails are present at key ICs. Next: troubleshoot signal path / mode logic."
+        },
+        {
+          "id": "dead_fail_power_cable_or_header",
+          "summary": "Rails missing at P1. Suspect ribbon orientation, header soldering, or rack power."
+        },
+        {
+          "id": "dead_fail_open_series_or_trace_plus12",
+          "summary": "+12 present at P1 but not on-board. Suspect open series element/trace on +12 path."
+        },
+        {
+          "id": "dead_fail_open_series_or_trace_minus12",
+          "summary": "-12 present at P1 but not on-board. Suspect open series element/trace on -12 path."
+        },
+        {
+          "id": "dead_fail_ic_power_not_reaching_opamp",
+          "summary": "Rails exist on-board but not at TL072 pins. Suspect soldering/trace near op-amp supply pins."
+        },
+        {
+          "id": "dead_fail_ic_power_not_reaching_ota",
+          "summary": "Rails exist on-board but not at LM13700 supply pins. Suspect soldering/trace near OTA supply pins."
+        }
+      ]
+    },
+
+    {
+      "id": "no_audio_output",
+      "name": "No audio output (but power rails OK)",
+      "entry_questions": [
+        "Do any LEDs light (D1–D4)?",
+        "Is MODE switch set to something sensible?",
+        "Are you feeding audio into INPUT 1 or INPUT 2?"
+      ],
+      "steps": [
+        {
+          "id": "sig_01_confirm_audio_in",
+          "check": "Confirm audio input actually reaches the circuit",
+          "where": "J1/J2 input jack tip node (relative to GND) while audio is playing",
+          "how": "If multimeter only: AC volts range; if scope available: probe signal",
+          "expect": { "note": "You should see some AC activity when audio is present." },
+          "pass_next": "sig_02_confirm_output_node_not_railed",
+          "fail_next": "no_audio_fail_source_or_jack"
+        },
+        {
+          "id": "sig_02_confirm_output_node_not_railed",
+          "check": "Check that output stage isn’t stuck at a rail",
+          "where": "Output op-amp stage output (near OUT jack J6 path). Measure DC to GND.",
+          "expect": { "min": -0.5, "typ": 0.0, "max": 0.5, "units": "V" },
+          "pass_next": "sig_03_mode_logic_alive",
+          "fail_next": "no_audio_fail_output_stage_railed"
+        },
+        {
+          "id": "sig_03_mode_logic_alive",
+          "check": "Confirm mode logic ICs have power",
+          "where": "U11 CD40106: VDD pin 14 to GND; VSS pin 7 to GND",
+          "expect": {
+            "vdd": { "min": 11.5, "typ": 12.0, "max": 12.5, "units": "V" },
+            "vss": { "min": -0.2, "typ": 0.0, "max": 0.2, "units": "V" }
+          },
+          "pass_next": "no_audio_done_next_requires_scope_or_more_nodes",
+          "fail_next": "no_audio_fail_logic_supply"
+        }
+      ],
+      "end_states": [
+        {
+          "id": "no_audio_done_next_requires_scope_or_more_nodes",
+          "summary": "Power + basic DC sanity OK. Next: add a scope-based signal ladder across filter core nodes."
+        },
+        {
+          "id": "no_audio_fail_source_or_jack",
+          "summary": "No AC activity at input node. Suspect source cable, jack soldering, or wrong jack."
+        },
+        {
+          "id": "no_audio_fail_output_stage_railed",
+          "summary": "Output node is stuck near +12 or -12. Suspect op-amp soldering, wrong part, or short around output stage."
+        },
+        {
+          "id": "no_audio_fail_logic_supply",
+          "summary": "CD40106 power incorrect. Suspect missing +12 to logic, solder bridge, or wrong IC orientation."
+        }
+      ]
+    },
+
+    {
+      "id": "no_resonance",
+      "name": "No resonance / resonance knob does nothing",
+      "entry_questions": [
+        "Does resonance do nothing in ALL modes?",
+        "Are you applying resonance CV or only using the knob?"
+      ],
+      "steps": [
+        {
+          "id": "res_01_check_res_ctrl_bias",
+          "check": "Verify resonance control path isn’t pinned to a rail",
+          "where": "RES_CTRL node (as labelled on schematic) DC to GND",
+          "expect": { "min": -0.5, "typ": 0.0, "max": 12.0, "units": "V", "note": "Should move with knob/CV, not be stuck hard at a rail." },
+          "pass_next": "res_02_check_ota_supply",
+          "fail_next": "res_fail_ctrl_stuck"
+        },
+        {
+          "id": "res_02_check_ota_supply",
+          "check": "Confirm OTA rail at resonance-related LM13700",
+          "where": "U6/U7 LM13700: V+ (pin 11) and V- (pin 6)",
+          "expect": {
+            "vplus": { "min": 11.5, "typ": 12.0, "max": 12.5, "units": "V" },
+            "vminus": { "min": -12.5, "typ": -12.0, "max": -11.5, "units": "V" }
+          },
+          "pass_next": "no_res_done_next_scope",
+          "fail_next": "res_fail_ota_supply"
+        }
+      ],
+      "end_states": [
+        {
+          "id": "no_res_done_next_scope",
+          "summary": "Control path + rails look OK. Next step is scope-based check of resonance injection point."
+        },
+        {
+          "id": "res_fail_ctrl_stuck",
+          "summary": "RES_CTRL stuck at rail or not moving. Suspect pot wiring, CV input network, or short."
+        },
+        {
+          "id": "res_fail_ota_supply",
+          "summary": "Resonance-related OTA missing rail. Suspect power distribution or soldering near LM13700."
+        }
+      ]
+    },
+
+    {
+      "id": "mode_switch_not_working",
+      "name": "MODE switch does nothing / wrong filter response",
+      "entry_questions": [
+        "Does the MODE switch physically click and feel normal?",
+        "Do any outputs change at all when switching modes?"
+      ],
+      "steps": [
+        {
+          "id": "mode_01_check_switch_signal",
+          "check": "Check MODE switch node toggles",
+          "where": "SW1 terminals (logic node) DC to GND while switching",
+          "expect": { "note": "Should toggle between logic levels (near 0V and near +12V). Depends on pullups." },
+          "pass_next": "mode_02_check_cd4027_supply",
+          "fail_next": "mode_fail_switch_or_debounce"
+        },
+        {
+          "id": "mode_02_check_cd4027_supply",
+          "check": "Confirm flip-flops have supply",
+          "where": "U10 CD4027: VDD pin 16 to GND and VSS pin 8 to GND",
+          "expect": {
+            "vdd": { "min": 11.5, "typ": 12.0, "max": 12.5, "units": "V" },
+            "vss": { "min": -0.2, "typ": 0.0, "max": 0.2, "units": "V" }
+          },
+          "pass_next": "mode_03_check_switching_ic_supply",
+          "fail_next": "mode_fail_logic_supply"
+        },
+        {
+          "id": "mode_03_check_switching_ic_supply",
+          "check": "Confirm analog switch ICs have correct rails",
+          "where": "U8 DG409: V+ pin 15 to GND, V- pin 16 to GND; U9 CD4052: VDD pin 16 to GND, VEE pin 7 to GND, VSS pin 8 to GND",
+          "expect": {
+            "u8_vplus": { "min": 11.5, "typ": 12.0, "max": 12.5, "units": "V" },
+            "u8_vminus": { "min": -12.5, "typ": -12.0, "max": -11.5, "units": "V" },
+            "u9_vdd": { "min": 11.5, "typ": 12.0, "max": 12.5, "units": "V" },
+            "u9_vee": { "min": -12.5, "typ": -12.0, "max": -11.5, "units": "V" },
+            "u9_vss": { "min": -0.2, "typ": 0.0, "max": 0.2, "units": "V" }
+          },
+          "pass_next": "mode_done_next_signal",
+          "fail_next": "mode_fail_switch_ic_supply"
+        }
+      ],
+      "end_states": [
+        {
+          "id": "mode_done_next_signal",
+          "summary": "Logic/switch rails OK. Next: verify mode control lines toggle (A0/A1/EN/Inh) with scope or DC test."
+        },
+        {
+          "id": "mode_fail_switch_or_debounce",
+          "summary": "Switch node not changing. Suspect SW1 wiring, debounce network, or soldering."
+        },
+        {
+          "id": "mode_fail_logic_supply",
+          "summary": "Flip-flop supply incorrect. Suspect missing +12/GND routing or solder bridges."
+        },
+        {
+          "id": "mode_fail_switch_ic_supply",
+          "summary": "Switch IC rails incorrect. Suspect power distribution or soldering around U8/U9."
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+test_id,category,step_order,power_state,signal_condition,where_to_probe,how_to_measure,expected_min,expected_typ,expected_max,units,notes
+PWR_HDR_P1_+12,Power,1,Powered,No special condition,P1 (Power header) pins 9/10 to GND,"DC volts, red to P1 pin9/10, black to GND",11.0,12.0,12.5,V,"+12 comes in via P1 pins 9/10, then through R66 to +12V net."
+PWR_HDR_P1_-12,Power,2,Powered,No special condition,P1 (Power header) pins 1/2 to GND,"DC volts, red to P1 pin1/2, black to GND",-12.5,-12.0,-11.0,V,"-12 comes in via P1 pins 1/2, then through R67 to -12V net."
+PWR_+12_AFTER_R66,Power,3,Powered,No special condition,R66 pad 1 (+12V net) to GND,DC volts,11.0,12.0,12.5,V,"R66 is series element between P1 and +12V net. If header has +12 but this doesn't, suspect R66/solder."
+PWR_-12_AFTER_R67,Power,4,Powered,No special condition,R67 pad 1 (-12V net) to GND,DC volts,-12.5,-12.0,-11.0,V,R67 is series element between P1 and -12V net.
+PWR_GND_CONTINUITY,Power,0,Unpowered,Power off,Any jack sleeve to P1 pins 3-8 (GND),Continuity / ohms,0.0,0.0,2.0,ohm,Confirms ground network and power header soldering.
+IC_U5_+12,IC rails,10,Powered,No special condition,U5 (LM13700) pad 11 (+12V) to GND,DC volts,11.0,12.0,12.5,V,Confirms +12V reaches OTA.
+IC_U5_-12,IC rails,11,Powered,No special condition,U5 (LM13700) pad 6 (-12V) to GND,DC volts,-12.5,-12.0,-11.0,V,Confirms -12V reaches OTA.
+IC_U1_+12,IC rails,12,Powered,No special condition,U1 (TL072) pad 8 (+12V) to GND,DC volts,11.0,12.0,12.5,V,Confirms +12 at op-amp.
+IC_U1_-12,IC rails,13,Powered,No special condition,U1 (TL072) pad 4 (-12V) to GND,DC volts,-12.5,-12.0,-11.0,V,Confirms -12 at op-amp.
+PWR_+12_AT_C23,Power,5,Powered,No special condition,C23 pad 1 (+12V) to C23 pad 2 (GND),DC volts,11.0,12.0,12.5,V,Bulk decoupling capacitor near power. Easy probe point.
+PWR_-12_AT_C24,Power,6,Powered,No special condition,C24 pad 2 (-12V) to C24 pad 1 (GND),DC volts,-12.5,-12.0,-11.0,V,Bulk decoupling for -12V. Easy probe point.
